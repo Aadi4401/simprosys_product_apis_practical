@@ -2,7 +2,8 @@ fastapi
 uvicorn
 pymongo
 python-jose
-pycrptodome
+pycryptodome
 openpyxl
 requests
-pytho-dotenv
+python-dotenv
+python-multipart

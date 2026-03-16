@@ -1,4 +1,4 @@
-from fastapi import Fastapi , Depends,HTTPException,Header,Query,Response
+from fastapi import FastAPI, Depends,HTTPException,Header,Query,Response
 from pydantic import BaseModel
 from jose import jwt,JWTError
 from pymongo import MongoClient
@@ -8,36 +8,37 @@ import os
 import requests
 from dotenv import load_dotenv
 import openpyxl
-from fastapi.response import StreamingResponse
+from fastapi.responses import StreamingResponse
 from bson.objectid import ObjectId
+from fastapi import Depends
+from fastapi.security import OAuth2PasswordBearer
 
 load_dotenv()
 
 SECRET_KEY= os.getenv("SECRET_KEY","secret")
 ALGORITHM= "HS256"
-AES_KEY=os.getenv("AES_KEY").encode
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8001/token")
+AES_KEY=os.getenv("AES_KEY","mysecretkey12345").encode()
 
 client= MongoClient("mongodb://mongodb:27017/")
 db = client["PRODUCT_APIS"]
 products = db["products"]
 
-app = Fastapi()
+app = FastAPI()
 
-def encrypt_response(data:str):
+
+def encrypt_response(data: str):
     cipher = AES.new(AES_KEY, AES.MODE_EAX)
     nonce = cipher.nonce
-    ciphertext,tag =cipher.encrypt_and_digest(data.encode())
-    return base64.b64encode(nonce + ciphertext.decode())
+    ciphertext, tag = cipher.encrypt_and_digest(data.encode())
+    return base64.b64encode(nonce + ciphertext).decode()
 
-def verify_token(authorization: str=Header(...)):
+def verify_token(token: str = Depends(oauth2_scheme)):
     try:
-        scheme,token =authorization.split()
-        payload = jwt.decode(token,SECRET_KEY,algorithms=[ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
-    except Exception:
-        raise HTTPException(status_code=401,detail="Invalid token")
-
-
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 class Product(BaseModel):
     name:str
     price:float
@@ -66,7 +67,7 @@ def update_product(product_id:str,product:Product,user= Depends(verify_token)):
 @app.delete("/products/{product_id}")
 def delete_product(product_id:str, user= Depends(verify_token)):
     result= products.delete_one({"_id":ObjectId(product_id)})
-    if result.matched_count==0:
+    if result.deleted_count==0:
         raise HTTPException(status_code=404,detail="product not found")
     return {"message":encrypt_response("Product deleted")}
 
@@ -76,19 +77,19 @@ def list_products(user=Depends(verify_token)):
     return {"data": encrypt_response(str(prod_list))}
 
 
-app.post("/products/bulk")
+@app.post("/products/bulk")
 def bulk_create_products(n:int = 1000,user= Depends(verify_token)):
-    requests.post("https://celery_worker:8000/bulk_create",jose={"n":n})
+    requests.post("http://celery_worker:8000/bulk_create", json={"n": n})
     return {"message":encrypt_response(f"Bulk creation started for {n} products")}
 
-app.get("products/export")
+@app.get("/products/export")
 def export_products(user=Depends(verify_token)):
     prod_list = list(products.find({},{"_id":0}))
-    wb = openpyxl.workbook()
+    wb = openpyxl.Workbook()
     ws = wb.active
     ws.append(["name","price","category_id"])
     for prod in prod_list:
-        ws.append([prod["name"],prod["price"],prod["categor_id"]])
+        ws.append([prod["name"], prod["price"], prod["category_id"]])
     from io import BytesIO
     stream = BytesIO()
     wb.save(stream)

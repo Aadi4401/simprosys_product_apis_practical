@@ -1,5 +1,5 @@
 from celery import Celery
-from fastapi import FastApi
+from fastapi import FastAPI
 from pydantic import BaseModel
 from jose import jwt,JWTError
 from pymongo import MongoClient
@@ -21,7 +21,7 @@ def bulk_create_products(n):
         products.insert_one({"name":f'product {i}',"price":10.0,"category_id":"dummy"})
 
 
-api = FastApi()
+api = FastAPI()
 
 class BulkRequest(BaseModel):
     n:int
