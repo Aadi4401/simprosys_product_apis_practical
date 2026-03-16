@@ -39,6 +39,7 @@ password admin
 
 
 FastAPI Microservices
+
 │
 
 ├── Auth Service (JWT Authentication)
@@ -46,5 +47,7 @@ FastAPI Microservices
 ├── Product Service (Product APIs)
 
 ├── Category Service (Category APIs)
+
 ├── MongoDB (Database)
+
 └── Redis (Background processing)
