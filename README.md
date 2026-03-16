@@ -32,3 +32,13 @@ http://localhost:8003/docs
 **note: you'll see lock icon in api click and enter username and password **
 username: admin
 password admin
+
+
+
+FastAPI Microservices
+│
+├── Auth Service (JWT Authentication)
+├── Product Service (Product APIs)
+├── Category Service (Category APIs)
+├── MongoDB (Database)
+└── Redis (Background processing)
